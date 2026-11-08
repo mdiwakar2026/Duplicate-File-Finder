@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duplicate Finder</title>
+<style>
+:root{
+  --bg:#f5f7fa;--panel:#fff;--text:#1f2933;--muted:#616e7c;--line:#e4e7eb;
+  --brand:#2563eb;--brand-ink:#fff;--keep:#e6f4ea;--keep-ink:#137333;--move:#fdf1e6;--move-ink:#b45309;
+  --danger:#b91c1c;--shadow:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1419;--panel:#171d24;--text:#e5e9ef;--muted:#9aa5b1;--line:#27303a;
+  --brand:#3b82f6;--keep:#12301c;--keep-ink:#6fd08c;--move:#3a2510;--move-ink:#f5a35a;--danger:#f87171;
+  --shadow:none}}
+*{box-sizing:border-box}
+.simtop{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:16px;margin-bottom:12px}
+@media (max-width:700px){.simtop{grid-template-columns:1fr}}
+.drop{border:2px dashed var(--line);border-radius:10px;min-height:150px;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;cursor:pointer;color:var(--muted)}
+.drop:hover,.drop.over{border-color:var(--brand)}.drop b{color:var(--brand)}.drop span{font-size:12px}
+.drop img{max-width:100%;max-height:130px;border-radius:6px;display:block;margin:0 auto 6px}
+.simform{display:flex;flex-direction:column;gap:8px}.simform .k{font-size:12px;color:var(--muted)}
+.simform .row input{flex:1}.hintline{font-size:12px;color:var(--muted)}
+.simgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.sim{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel);font-size:12px;position:relative}
+.sim.off{opacity:.45}.sim .th{height:120px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.sim .th img{width:100%;height:100%;object-fit:cover}.sim .th .ic{font-size:34px}
+.sim .meta{padding:6px 8px}.sim .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sim .pth{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.sim input{position:absolute;top:6px;left:6px;width:18px;height:18px}
+.sim .sc{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:#fff;border-radius:10px;padding:1px 7px}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",system-ui,sans-serif}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;margin:0;font-weight:600}
+header .tag{margin-left:auto;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#16a34a}
+main{max-width:1180px;margin:24px auto;padding:0 16px;display:grid;gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:20px}
+.card h2{margin:0 0 4px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.step{width:22px;height:22px;border-radius:50%;background:var(--brand);color:var(--brand-ink);font-size:12px;display:inline-grid;place-items:center}
+.sub{color:var(--muted);margin:0 0 14px;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type=text]{flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--text);font:inherit}
+button{padding:9px 16px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-weight:500;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--brand)}
+button.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+button.danger{color:var(--danger)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.stat .k{font-size:12px;color:var(--muted)}.stat .v{font-size:22px;font-weight:600;margin-top:2px}
+.toolbar{display:flex;gap:10px;align-items:center;margin:16px 0 10px;flex-wrap:wrap}
+.toolbar input{max-width:340px}
+.groups{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:7px 12px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600;z-index:1}
+tr.ghead td{background:var(--bg);font-weight:600;font-size:12px;color:var(--muted)}
+td.path{word-break:break-all}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px}
+.badge.keep{background:var(--keep);color:var(--keep-ink)}.badge.move{background:var(--move);color:var(--move-ink)}
+.empty{padding:36px;text-align:center;color:var(--muted)}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.action{border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.action b{font-size:14px}.action span{color:var(--muted);font-size:12.5px;flex:1}
+.log{background:#0b1220;color:#cbd5e1;font:12px/1.6 Consolas,monospace;border-radius:8px;padding:12px;height:180px;overflow:auto;white-space:pre-wrap}
+.progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:10px;visibility:hidden}
+.progress.on{visibility:visible}.progress i{display:block;height:100%;width:30%;background:var(--brand);animation:slide 1.2s infinite ease-in-out}
+@keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
+.note{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;margin-top:12px}
+dialog{border:none;border-radius:12px;padding:0;max-width:460px;width:92%;background:var(--panel);color:var(--text);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(15,23,42,.5)}
+.dlg{padding:22px}.dlg h3{margin:0 0 8px}.dlg p{color:var(--muted);margin:0 0 16px;white-space:pre-line}
+.dlg input{width:100%;margin-bottom:16px}
+.dlg .row{justify-content:flex-end}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:12px 0 8px}
+.bar i{display:block;height:100%;width:0;background:var(--brand);border-radius:6px;transition:width .6s}
+.pct{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+select{padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--text);font:inherit}
+.mode{font-size:12.5px;margin-top:10px;padding:8px 12px;border-radius:7px;display:none}
+.mode.fast{display:block;background:var(--keep);color:var(--keep-ink)}
+.mode.slow{display:block;background:var(--move);color:var(--move-ink)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 14px}
+.st{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:7px}
+.st b{width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;font-size:11px;background:var(--line);color:var(--text)}
+.st.on{border-color:var(--brand);color:var(--text)}.st.on b{background:var(--brand);color:#fff}
+.st.done b{background:#16a34a;color:#fff}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pgrid .k{font-size:12px;color:var(--muted)}.pgrid .v{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+@media (max-width:760px){.pgrid{grid-template-columns:repeat(2,1fr)}}
+#fb{max-width:560px}
+.crumb{font:12.5px Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;margin-bottom:10px;word-break:break-all}
+.fblist{height:320px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+.fbitem{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px}
+.fbitem:hover{background:var(--bg)}.fbitem svg{flex:none}
+.banner{background:#7f1d1d;color:#fff;padding:10px 28px;font-size:13px;display:none}
+.banner.show{display:block}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:1fr}header{padding:12px 16px}}
+</style>
+</head>
+<body>
+<header>
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/></svg>
+  <h1>Duplicate Finder</h1>
+  <div class="tag"><span class="dot" id="dot"></span><span id="statusText">Ready</span></div>
+</header>
+<div class="banner" id="banner">The app is not running. Double-click <b>Start Duplicate Finder.bat</b> and keep its window open, then refresh this page.</div>
+
+<main>
+  <section class="card">
+    <h2><span class="step">1</span>Select drive or folder</h2>
+    <p class="sub">Pick your external hard disk (e.g. F:\) or any folder inside it.</p>
+    <div class="row">
+      <input type="text" id="path" placeholder="e.g. F:\" spellcheck="false">
+      <button id="browse">Browse…</button>
+      <button class="primary" id="scan">Scan for duplicates</button>
+    </div>
+    <div class="row" style="margin-top:12px;font-size:13px;color:var(--muted)">
+      <label for="minSize">Skip files smaller than</label>
+      <select id="minSize">
+        <option value="0">0 – check every file (slowest)</option>
+        <option value="10240">10 KB</option>
+        <option value="102400" selected>100 KB (recommended)</option>
+        <option value="1048576">1 MB (photos, videos, large documents)</option>
+        <option value="10485760">10 MB (videos only, fastest)</option>
+      </select>
+    </div>
+    <div class="mode" id="modeNote"></div>
+  </section>
+
+  <section class="card" id="progCard" hidden>
+    <div class="row" style="justify-content:space-between">
+      <h2 id="pPhase">Scanning…</h2>
+      <div class="row"><span class="pct" id="pPct">0%</span><button class="danger" id="stop">Stop scan</button></div>
+    </div>
+    <div class="bar"><i id="pBar"></i></div>
+    <div class="steps">
+      <div class="st" id="st1"><b>1</b>List files</div>
+      <div class="st" id="st2"><b>2</b>Quick check</div>
+      <div class="st" id="st3"><b>3</b>Full compare</div>
+    </div>
+    <div class="pgrid">
+      <div><div class="k">This step</div><div class="v" id="pStep">–</div></div>
+      <div><div class="k">Progress</div><div class="v" id="pDetail">–</div></div>
+      <div><div class="k">Running for</div><div class="v" id="pElapsed">–</div></div>
+      <div><div class="k">Time left</div><div class="v" id="pEta">estimating…</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">2</span>Review results</h2>
+    <p class="sub" id="scanInfo">No scan yet.</p>
+    <div class="stats">
+      <div class="stat"><div class="k">Duplicate groups</div><div class="v" id="sGroups">–</div></div>
+      <div class="stat"><div class="k">Extra copies</div><div class="v" id="sCopies">–</div></div>
+      <div class="stat"><div class="k">Space to free</div><div class="v" id="sWaste">–</div></div>
+      <div class="stat"><div class="k">Largest duplicate</div><div class="v" id="sLargest">–</div></div>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="filter" placeholder="Filter by file or folder name…">
+      <button id="export">Export report (HTML + CSV)</button>
+    </div>
+    <div class="groups" id="groups"><div class="empty">Run a scan to see duplicate files here.</div></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">3</span>Take action</h2>
+    <p class="sub">Nothing is ever deleted. Files are only moved, and every move can be undone.</p>
+    <div class="actions">
+      <div class="action"><b>Move duplicates</b><span>Extra copies go to <code>_Duplicates</code> on the same drive, keeping their original folder structure.</span><button class="primary" id="move">Move duplicates</button></div>
+      <div class="action"><b>Organize files</b><span>Optional. Sorts photos, videos, audio, documents and archives into <code>_Organized\Type\Year</code>. Programs and project folders are left alone. Run after moving duplicates.</span><button id="organize">Organize</button></div>
+      <div class="action"><b>Undo last action</b><span id="undoInfo">Nothing to undo.</span><button class="danger" id="undo">Undo</button></div>
+    </div>
+  </section>
+
+  <section class="card" id="simCard">
+    <h2><span class="step">4</span>Find similar files</h2>
+    <p class="sub">Upload a photo, video or document. The app finds related files in a folder: the same person's face, similar pictures or videos, or documents with similar content. Everything runs on this computer.</p>
+    <div class="simtop">
+      <label class="drop" id="drop">
+        <input type="file" id="simFile" hidden accept=".jpg,.jpeg,.png,.bmp,.webp,.tif,.tiff,.mp4,.mov,.m4v,.mkv,.avi,.3gp,.wmv,.mpg,.mpeg,.mts,.pdf,.docx,.txt,.md,.csv,.rtf,.log">
+        <div id="dropInner"><b>Choose a file</b> or drop it here<br><span>Photo (jpg, png) · Video (mp4, mov) · Word (docx) · PDF · Text</span></div>
+      </label>
+      <div class="simform">
+        <div class="k">Search in folder</div>
+        <div class="row"><input type="text" id="simRoot" placeholder="e.g. E:\" spellcheck="false"><button id="simBrowse">Browse…</button></div>
+        <button class="primary" id="simGo" disabled>Find similar</button>
+        <div class="hintline">The first search of a whole drive reads every photo/video (or document) once and can take hours. It's remembered, so later searches take minutes. You can stop at any time.</div>
+      </div>
+    </div>
+    <div id="simRes" hidden>
+      <div class="toolbar">
+        <span id="simInfo" style="flex:1"></span>
+        <button id="simAll">Select all</button><button id="simNone">Select none</button>
+        <select id="simMode"><option value="copy">Copy (originals stay)</option><option value="move">Move (undo available)</option></select>
+        <button class="primary" id="simCollect" disabled>Copy selected</button>
+      </div>
+      <div class="simgrid" id="simGrid"></div>
+      <div class="empty" id="simMore" hidden><button id="simMoreBtn">Show more</button></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Activity</h2>
+    <div class="progress" id="progress"><i></i></div>
+    <div class="log" id="log">Waiting for a task…</div>
+  </section>
+</main>
+
+<dialog id="dlg"><form method="dialog" class="dlg">
+  <h3 id="dTitle"></h3><p id="dMsg"></p>
+  <input type="text" id="dInput" autocomplete="off">
+  <div class="hint" id="dHint" style="min-height:1.2em;font-size:13px;color:var(--muted)"></div>
+  <div class="row"><button class="primary" id="dOk" value="ok" disabled style="order:2">Confirm</button><button type="button" id="dCancel" style="order:1">Cancel</button></div>
+</form></dialog>
+<dialog id="fb"><div class="dlg">
+  <h3>Select drive or folder</h3>
+  <div class="crumb" id="fbPath">This PC</div>
+  <div class="fblist" id="fbList"></div>
+  <div class="row"><button id="fbUp">↑ Up</button><span style="flex:1"></span><button id="fbCancel">Cancel</button><button class="primary" id="fbSelect">Select this folder</button></div>
+</div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let data = null, busy = false, wasBusy = false;
+
+const human = n => { const u=["B","KB","MB","GB","TB"]; let i=0; while(n>=1024&&i<u.length-1){n/=1024;i++} return n.toFixed(i?1:0)+" "+u[i]; };
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const toast = msg => { const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),3000); };
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || "Request failed");
+  return j;
+}
+
+function confirmBox(title, msg, word) {
+  return new Promise(res => {
+    const d=$("dlg"), inp=$("dInput"), ok=$("dOk");
+    $("dTitle").textContent=title; $("dMsg").textContent=msg+`\n\nType ${word} to confirm.`;
+    const hint=$("dHint"), matches=()=>inp.value.trim().toUpperCase()===word;
+    inp.value=""; inp.placeholder=word; ok.disabled=true; hint.textContent=""; d.returnValue="";
+    inp.oninput=()=>{ ok.disabled=!matches();
+      hint.textContent=!inp.value.trim()||matches()?"":`Type exactly: ${word}`; };
+    inp.onkeydown=e=>{ if(e.key==="Enter"&&!matches()){ e.preventDefault(); hint.textContent=`Type exactly: ${word}`; } };
+    $("dCancel").onclick=()=>d.close("cancel");
+    d.onclose=()=>{ const yes=d.returnValue==="ok"; if(!yes) toast("Cancelled. Nothing was changed."); res(yes); };
+    d.showModal(); inp.focus();
+  });
+}
+
+function renderGroups() {
+  const box=$("groups");
+  if (!data || !data.groups.length) { box.innerHTML=`<div class="empty">${data&&data.root?"No duplicates found 🎉":"Run a scan to see duplicate files here."}</div>`; return; }
+  const q=$("filter").value.trim().toLowerCase();
+  const list=data.groups.filter(g=>!q||g.some(f=>f.path.toLowerCase().includes(q)));
+  const shown=list.slice(0,300);
+  let h=`<table><thead><tr><th style="width:90px">Action</th><th>Path</th><th style="width:140px">Modified</th></tr></thead><tbody>`;
+  shown.forEach((g,i)=>{
+    h+=`<tr class="ghead"><td colspan="3">Group ${data.groups.indexOf(g)+1} · ${g.length} copies · ${human(g[0].size)} each</td></tr>`;
+    g.forEach((f,j)=>h+=`<tr><td><span class="badge ${j?"move":"keep"}">${j?"MOVE":"KEEP"}</span></td><td class="path">${esc(f.path)}</td><td>${f.mtime}</td></tr>`);
+  });
+  h+="</tbody></table>";
+  if (list.length>shown.length) h+=`<div class="empty">Showing 300 of ${list.length} groups. Use the filter or export the full report.</div>`;
+  box.innerHTML = list.length ? h : `<div class="empty">No groups match “${esc(q)}”.</div>`;
+}
+
+async function loadSummary() {
+  data = await api("/api/summary");
+  if (data.root && !$("path").value) $("path").value=data.root;
+  $("scanInfo").textContent = data.root ? `Last scan: ${data.root} · ${data.scanned.replace("T"," ")}` : "No scan yet.";
+  $("sGroups").textContent = data.root ? data.group_count.toLocaleString() : "–";
+  $("sCopies").textContent = data.root ? data.copies : "–";
+  $("sWaste").textContent = data.root ? human(data.waste) : "–";
+  $("sLargest").textContent = data.groups.length ? human(data.groups[0][0].size) : "–";
+  const lr=data.last_run;
+  $("undoInfo").textContent = lr ? `Last: ${lr.kind} · ${lr.files} files · ${lr.started.replace("T"," ")}` : "Nothing to undo.";
+  renderGroups(); updateButtons();
+}
+
+function updateButtons() {
+  const has=data&&data.root;
+  $("scan").disabled=busy; $("browse").disabled=busy; $("export").disabled=busy||!has;
+  $("move").disabled=busy||!has||!data.copies; $("organize").disabled=busy||!has;
+  $("undo").disabled=busy||!(data&&data.last_run);
+  $("simGo").disabled=busy||!upName; $("simBrowse").disabled=busy;
+  $("simCollect").disabled=busy||!simSel.size;
+  $("simCollect").textContent=($("simMode").value==="copy"?"Copy":"Move")+" selected"+(simSel.size?` (${simSel.size})`:"");
+  if (data&&data.root&&!$("simRoot").value) $("simRoot").value=data.root;
+}
+
+async function poll() {
+  try {
+    const s = await api("/api/status");
+    busy=s.busy;
+    $("progress").classList.toggle("on",busy);
+    $("dot").style.background=busy?"#f59e0b":"#16a34a";
+    $("statusText").textContent=busy?s.task+"…":"Ready";
+    const pr=s.progress, scanning=busy&&s.task==="Scanning";
+    if (pr.phase && s.task!=="Exporting report" && s.task!=="Undoing") {
+      $("progCard").hidden=false;
+      document.querySelector("#progCard .steps").hidden=s.task!=="Scanning";
+      $("stop").textContent=s.task==="Scanning"?"Stop scan":"Stop";
+      $("pPhase").textContent=pr.phase||"Starting…";
+      $("pPct").textContent=pr.pct.toFixed(1)+"% overall";
+      $("pBar").style.width=pr.pct+"%";
+      $("pStep").textContent=pr.step?pr.step_pct.toFixed(1)+"%":(pr.phase==="Scan complete"?"Done":"–");
+      $("pDetail").textContent=pr.detail||"–";
+      $("pElapsed").textContent=pr.started?fmtEta(s.now-pr.started, true):"–";
+      $("pEta").textContent=!busy?"–":pr.eta!=null?"about "+fmtEta(pr.eta):pr.step===1?"after step 1":"estimating…";
+      [1,2,3].forEach(i=>{ const el=$("st"+i); el.classList.toggle("on",pr.step===i);
+        el.classList.toggle("done",(pr.step&&i<pr.step)||pr.phase==="Scan complete"); });
+      $("stop").hidden=!busy;
+    }
+    if (window.lastAdmin === s.admin) { /* unchanged: keep the button stable */ } else {
+    window.lastAdmin = s.admin;
+    $("modeNote").className="mode "+(s.admin?"fast":"slow");
+    $("modeNote").innerHTML=s.admin?"⚡ Fast mode is on (running as administrator): a whole drive is listed in about a minute."
+      :`Standard mode: scanning a whole drive can take many hours on a USB hard disk. <button id="elevate" class="primary" style="margin-left:8px;padding:5px 12px">Restart in fast mode</button> <span>(Windows will ask for permission. Click <b>Yes</b>.)</span>`;
+    const el=$("elevate"); if (el) el.onclick = async () => { try { await api("/api/elevate",{}); toast("Click Yes on the Windows prompt. The page reconnects by itself."); } catch(e) { toast(e.message); } };
+    }
+    if (s.log.length) { const l=$("log"); l.textContent=s.log.join("\n"); l.scrollTop=l.scrollHeight; }
+    if (s.sim_error && !window.simErr) { window.simErr = true; $("dropInner").innerHTML = `<b>Find similar is not available</b><br><span>${esc(s.sim_error)}</span>`; $("simFile").disabled = true; }
+    if (s.sim_version && s.sim_version !== window.simVersion) { window.simVersion = s.sim_version; await loadSimilar(); }
+    if (wasBusy && !busy) { await loadSummary(); toast((s.task||"Task")+" finished"); }
+    wasBusy=busy; updateButtons();
+    $("banner").classList.remove("show");
+    if (!data) await loadSummary();
+  } catch(e) {
+    $("statusText").textContent="App not running"; $("dot").style.background="#dc2626";
+    $("banner").classList.add("show"); data=null; busy=true; updateButtons(); busy=false;
+  }
+}
+
+async function start(path, body) {
+  try { await api(path, body||{}); wasBusy=true; busy=true; updateButtons(); poll(); }
+  catch(e) { toast(e.message); }
+}
+
+// ---- in-page folder browser (no hidden Windows pop-up)
+let fbCur = "";
+const folderIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="var(--brand)" opacity=".85"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;
+async function fbOpen(path) {
+  try {
+    const r = await api("/api/folders", {path});
+    fbCur = r.path;
+    $("fbPath").textContent = r.path || "This PC";
+    $("fbUp").disabled = r.parent === null;
+    $("fbUp").onclick = () => fbOpen(r.parent);
+    $("fbSelect").disabled = !r.path;
+    $("fbList").innerHTML = r.folders.length
+      ? r.folders.map(f => `<div class="fbitem" data-p="${esc(f.path)}">${folderIcon}<span>${esc(f.name)}</span></div>`).join("")
+      : `<div class="empty">No sub-folders. Click “Select this folder”.</div>`;
+    $("fbList").querySelectorAll(".fbitem").forEach(el => el.onclick = () => fbOpen(el.dataset.p));
+  } catch (e) { toast(e.message); }
+}
+$("browse").onclick = async () => {
+  if (!data) return toast("The app is not running. Start it first.");
+  await fbOpen($("path").value.trim()); if (!$("fb").open) $("fb").showModal();
+};
+$("fbCancel").onclick = () => $("fb").close();
+let fbTarget = "path";
+$("fbSelect").onclick = () => { $(fbTarget).value = fbCur; $("fb").close(); fbTarget="path"; };
+
+// ---- Find similar
+let upName = null, sim = null, simSel = new Set(), simShown = 0, simStamp = 0;
+const icons = {doc:"📄", video:"🎬", image:"🖼️"};
+async function upload(f) {
+  if (!f) return;
+  $("dropInner").innerHTML = `Uploading ${esc(f.name)}…`;
+  try {
+    const r = await fetch("/api/upload", {method:"POST", headers:{"X-Filename":encodeURIComponent(f.name)}, body:f});
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    upName = j.name;
+    const pic = j.kind==="doc" ? `<div style="font-size:40px">📄</div>` : `<img src="/api/qthumb?name=${encodeURIComponent(j.name)}&t=${Date.now()}" alt="">`;
+    $("dropInner").innerHTML = `${pic}<b>${esc(j.name)}</b><br><span>${human(j.size)} · click to choose another</span>`;
+  } catch(e) { upName=null; $("dropInner").innerHTML=`<b>Choose a file</b> or drop it here`; toast(e.message); }
+  updateButtons();
+}
+$("simFile").onchange = e => upload(e.target.files[0]);
+$("drop").ondragover = e => { e.preventDefault(); $("drop").classList.add("over"); };
+$("drop").ondragleave = () => $("drop").classList.remove("over");
+$("drop").ondrop = e => { e.preventDefault(); $("drop").classList.remove("over"); upload(e.dataTransfer.files[0]); };
+$("simBrowse").onclick = async () => { fbTarget="simRoot"; await fbOpen($("simRoot").value.trim()); if (!$("fb").open) $("fb").showModal(); };
+$("simGo").onclick = () => { const root=$("simRoot").value.trim(); if(!root) return toast("Choose a folder to search");
+  start("/api/similar", {name:upName, root}); };
+async function loadSimilar() {
+  sim = (await api("/api/similar")).result;
+  if (!sim || !sim.results) { $("simRes").hidden = true; return; }
+  simStamp = Date.now(); simSel = new Set(sim.results.flatMap((r,i)=>r.sure?[i]:[])); simShown = 0;
+  $("simGrid").innerHTML = ""; $("simRes").hidden = false; renderSim();
+}
+function simInfo() {
+  const res = sim.results;
+  $("simInfo").textContent = res.length ? `${res.length.toLocaleString()} files similar to “${sim.query}” in ${sim.root} · ${simSel.size.toLocaleString()} selected. Uncertain matches (“possible”) are not ticked; check them yourself.`
+                                        : `No similar files found for “${sim.query}”.`;
+  if (sim.note) $("simInfo").innerHTML = esc($("simInfo").textContent) + `<div style="color:var(--move-ink);margin-top:4px">⚠ ${esc(sim.note)}</div>`;
+  updateButtons();
+}
+function renderSim() {
+  const res = sim.results, grid = $("simGrid");
+  const end = Math.min(res.length, simShown + 120);
+  for (let i = simShown; i < end; i++) {
+    const r = res[i], d = document.createElement("div");
+    d.className = "sim"+(simSel.has(i)?"":" off"); d.dataset.i = i;
+    d.innerHTML = `<div class="th">${r.kind==="doc" ? `<span class="ic">📄</span>` : `<img loading="lazy" src="/api/thumb?i=${i}&t=${simStamp}" alt="" onerror="this.outerHTML='<span class=ic>${icons[r.kind]}</span>'">`}</div>
+      <input type="checkbox"${simSel.has(i)?" checked":""}><span class="sc">${Math.round(r.score*100)}%</span>
+      <div class="meta"><div class="nm" title="${esc(r.path)}">${esc(r.path.split("\\").pop())}</div>
+      <div>${esc(r.reason)} · ${human(r.size)}${r.mtime?" · "+r.mtime:""}</div><div class="pth" title="${esc(r.path)}">${esc(r.path)}</div></div>`;
+    d.querySelector("input").onchange = ev => { ev.target.checked ? simSel.add(i) : simSel.delete(i); d.classList.toggle("off", !ev.target.checked); simInfo(); };
+    grid.appendChild(d);
+  }
+  simShown = end; $("simMore").hidden = simShown >= res.length; simInfo();
+}
+const setAll = on => { simSel = on ? new Set(sim.results.map((_,i)=>i)) : new Set();
+  document.querySelectorAll("#simGrid .sim").forEach(d => { d.querySelector("input").checked=on; d.classList.toggle("off",!on); }); simInfo(); };
+$("simAll").onclick = () => setAll(true); $("simNone").onclick = () => setAll(false);
+$("simMoreBtn").onclick = renderSim;
+$("simMode").onchange = updateButtons;
+$("simCollect").onclick = async () => {
+  const mode = $("simMode").value, word = mode.toUpperCase(), n = simSel.size;
+  const msg = mode==="copy" ? `${n} files will be COPIED to:\n${sim.root}\\_Found\\${sim.query.replace(/\.[^.]+$/,"")} <date>\n\nThe originals stay where they are.`
+                            : `${n} files will be MOVED to:\n${sim.root}\\_Found\\${sim.query.replace(/\.[^.]+$/,"")} <date>\n\nUse Undo to put them back.`;
+  if (await confirmBox(mode==="copy"?"Copy files?":"Move files?", msg, word)) start("/api/collect", {mode, indexes:[...simSel]});
+};
+$("scan").onclick = () => { const p=$("path").value.trim(); if(!p) return toast("Choose a folder first"); start("/api/scan",{path:p, min_size:+$("minSize").value}); };
+const fmtEta = (s, exact) => { s=Math.max(0,Math.round(s));
+  if (exact) { const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return (h?h+" h ":"")+(h||m?m+" min ":"")+(h?"":x+" s"); }
+  return s<60?"under 1 min":s<3600?Math.round(s/60)+" min":Math.floor(s/3600)+" h "+Math.round(s%3600/60)+" min"; };
+$("stop").onclick = async () => { await api("/api/stop",{}); toast("Stopping… finishing the current file"); };
+$("export").onclick =() => start("/api/report");
+$("filter").oninput = renderGroups;
+$("move").onclick = async () => {
+  if (await confirmBox("Move duplicates?", `${data.copies} files (${human(data.waste)}) will be moved to:\n${data.root}\\_Duplicates\n\nThe oldest copy of each file stays in place.`, "MOVE")) start("/api/move");
+};
+$("organize").onclick = async () => {
+  if (await confirmBox("Organize files?", `Photos, videos, audio, documents and archives in ${data.root} will be moved into\n_Organized\\<Type>\\<Year>.\nPrograms, code-project folders, hidden files and unknown file types stay where they are.\nOn a whole drive, listing takes 1–2 minutes before moving starts. Watch the progress card; Undo is available.`, "ORGANIZE")) start("/api/organize");
+};
+$("undo").onclick = async () => {
+  const lr=data.last_run;
+  if (await confirmBox("Undo last action?", `Run #${lr.id} (${lr.kind}): ${lr.files} files will be moved back to their original location.`, "UNDO")) start("/api/undo");
+};
+
+updateButtons(); poll(); setInterval(poll, 1000); loadSimilar().catch(()=>{});
+</script>
+</body>
+</html>

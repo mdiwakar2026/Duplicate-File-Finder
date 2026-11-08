@@ -1,0 +1,18 @@
+# Personal data created while the app runs - never commit these
+dupfinder.db
+dupfinder.db-*
+uploads/
+reports/
+
+# Face models are downloaded automatically on first use (38 MB)
+models/*.onnx
+models/*.part
+
+# Python / editor
+__pycache__/
+*.pyc
+.venv/
+venv/
+.claude/
+.vscode/
+.idea/
