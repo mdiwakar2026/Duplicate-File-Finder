@@ -174,3 +174,7 @@ Created while running (personal, excluded from git by `.gitignore`): `dupfinder.
 | Face search: "face models could not be downloaded" | Connect to the internet once and search again |
 | Many files "could not be read" in a OneDrive folder | Start OneDrive, or right-click the folder → *Always keep on this device* |
 | Want to start completely fresh | Close the app and delete `dupfinder.db` (your files are not affected) |
+
+## License
+[MIT](LICENSE): free to use, copy, modify and share, including commercially, as long as the license notice is kept. Provided "as is", without warranty.
+The face model files downloaded at first use come from the [OpenCV Model Zoo](https://github.com/opencv/opencv_zoo) under the Apache 2.0 license.
